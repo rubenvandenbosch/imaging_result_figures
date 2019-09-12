@@ -78,7 +78,7 @@ for iCon = 1:numel(SPM.xCon)
     % process because they follow main contrast, which has already been
     % checked for processing.
     % If pet, then there may be an inversed contrast, which is named
-    % "negative_<contrastName>. Same as mri, skip depends on primary
+    % 'negative_<contrastName>'. Same as mri, skip depends on primary
     % contrast.
     switch modality
         case 'mri'
