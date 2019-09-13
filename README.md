@@ -7,8 +7,6 @@
 - [slice_display toolbox](https://github.com/bramzandbelt/slice_display) by Bram Zandbelt
 - [Panel](https://www.mathworks.com/matlabcentral/fileexchange/20003-panel) by Ben Mitch
 
-**Note:** Adapt the function sd_display (from slice_display toolbox) line 1 to: `function [settings, p, h_figure] = sd_display(layers, settings)`. A pull request has been made to slice_display for this change.
-
 ## Description
 Code to create and save result figures from task fMRI analyses or PET-BEH voxelwise correlations.
 
