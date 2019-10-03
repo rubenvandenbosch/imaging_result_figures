@@ -56,6 +56,14 @@ todo.figType = 'tmap';
 % todo.contrast.<contrastName>.slices.sagittal  : vector of slice numbers
 % todo.contrast.<contrastName>.orientations_in_html : cell array of strings
 
+% Default settings to use if orientation and slice settings have not been
+% specified for a contrast that is set to true (here focused on striatum)
+todo.defaults.orientations         = {'axial','coronal','sagittal'};
+todo.defaults.slices.axial         = -8:4:28;
+todo.defaults.slices.coronal       = -20:4:26;
+todo.defaults.slices.sagittal      = [-32:4:-8 8:4:34];
+todo.defaults.orientations_in_html = {'axial','coronal','sagittal'};
+
 % Example for right-hand buttonPress contrast
 todo.contrast.buttonPress.do                    = true;
 todo.contrast.buttonPress.orientations          = {'axial','coronal','sagittal'};
@@ -121,10 +129,33 @@ options.figure    = figure;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Get figure type name with correct capitals for use in filenames
+% -------------------------------------------------------------------------
 if strcmpi(options.todo.figType,'tmap')
     options.todo.figType = 'Tmap';
 elseif strcmpi(options.todo.figType,'dualcoded')
     options.todo.figType = 'dualCoded';
+end
+
+% Fill in missing orientation and slice settings for to be processed
+% contrasts with default settings
+% -------------------------------------------------------------------------
+cons = fieldnames(options.todo.contrast);
+for icon = 1:numel(cons)
+    conName = cons{icon};
+
+    % Skip this contrast if not selected in options.todo
+    if ~options.todo.contrast.(conName).do
+        continue
+    end
+
+    % Fill in default orientation and slice settings for those settings
+    % that were not specified.
+    opts = fieldnames(options.todo.defaults);
+    for iOpt = 1:numel(opts)
+        if ~isfield(options.todo.contrast.(conName),opts{iOpt})
+            options.todo.contrast.(conName).(opts{iOpt}) = options.todo.defaults.(opts{iOpt});
+        end
+    end
 end
 
 % =========================================================================
@@ -396,22 +427,27 @@ if options.todo.createHTML
                 for iCon = 1:numel(cons)
                     contrast = cons{iCon};
                     
-                    % HTML output files
-                    htmlFile = fullfile(outputDir,sprintf('groupLevel_results_%s_%s_%s_%s_p%s.html',...
-                                                            options.todo.figType,contrast,denoise,options.todo.significance.thresholdType,p));
-                    % Create file list
-                    % -----------------------------------------------------
-                    imgFiles = {};
-
                     % Skip contrast if not selected in options.todo
                     % -----------------------------------------------------
                     if ~options.todo.contrast.(contrast).do
                         continue
                     end
                     
+                    % HTML output files
+                    htmlFile = fullfile(outputDir,sprintf('groupLevel_results_%s_%s_%s_%s_p%s.html',...
+                                                            options.todo.figType,contrast,denoise,options.todo.significance.thresholdType,p));
+                    % Create file list
+                    % -----------------------------------------------------
+                    imgFiles = {};
+                    
                     % Collect image files
                     % .....................................................
                     orientations = options.todo.contrast.(contrast).orientations_in_html;
+
+                    % If orientations to include is empty, skip contrast
+                    if isempty(orientations)
+                        continue
+                    end
                     
                     % Loop over drugs and drug comparisons to include
                     for idrug = 1:numel(options.todo.drugs)
@@ -420,6 +456,30 @@ if options.todo.createHTML
                                                 options.todo.figType,contrast,orientations{iOr},options.todo.significance.thresholdType,p);
                             imgFiles = [imgFiles; ...
                                         cellstr(fullfile(options.io.groupLevelDir,denoise,sprintf('%s_%s',options.todo.drugs{idrug},contrast),'figures',fname))];
+                        end
+                        
+                        % Add potential covariate contrasts.
+                        % .................................................
+                        % Covariate contrasts are named <contrast>_x_<cov>
+                        pat = sprintf('result_%s_%s*_%s_%s_p%s.png', ...
+                                                options.todo.figType,contrast,orientations{1},options.todo.significance.thresholdType,p);
+                        fmatch = dir(fullfile(options.io.groupLevelDir,denoise,sprintf('%s_%s',options.todo.drugs{idrug},contrast),'figures',pat));
+                        
+                        if numel(fmatch) > 1
+                            for icov = 2:numel(fmatch)
+                                % Get contrast+covariate name
+                                split = strsplit(fmatch(icov).name,'_');
+                                conCellNum = find(strcmp(contrast,split));
+                                concovNm = [split{conCellNum} '_' split{conCellNum+1} '_' split{conCellNum+2}];
+                                
+                                % Add files to list
+                                for iOr = 1:numel(orientations)
+                                    fname = sprintf('result_%s_%s_%s_%s_p%s.png', ...
+                                                        options.todo.figType,concovNm,orientations{iOr},options.todo.significance.thresholdType,p);
+                                    imgFiles = [imgFiles; ...
+                                                cellstr(fullfile(options.io.groupLevelDir,denoise,sprintf('%s_%s',options.todo.drugs{idrug},contrast),'figures',fname))];
+                                end
+                            end
                         end
                     end
                     
