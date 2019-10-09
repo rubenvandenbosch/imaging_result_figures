@@ -104,7 +104,7 @@ for iCon = 1:numel(SPM.xCon)
 															
         % If the binary image file does not exist, create it
         if ~exist(layers(2).mask.file,'file')
-            create_significant_voxels_binary(SPMmat,contrast,options);
+            create_significant_voxels_binary(SPMmat,cellstr(contrast),options);
         end
     elseif strcmp(options.todo.figType,'dualCoded')
 
@@ -122,7 +122,7 @@ for iCon = 1:numel(SPM.xCon)
 		
 		% If the binary image file does not exist, create it
         if ~exist(layers(3).color.file,'file')
-            create_significant_voxels_binary(SPMmat,contrast,options);
+            create_significant_voxels_binary(SPMmat,cellstr(contrast),options);
         end
     end
 
