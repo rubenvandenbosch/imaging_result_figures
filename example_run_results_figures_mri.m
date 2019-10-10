@@ -96,8 +96,12 @@ todo.average    = true;
 % -------------------------------------------------------------------------
 % thresholdType : 'uncorrected', 'fwe'
 % threshold     : p-value threshold
+% extent        : minimum cluster size in number of voxels to include in
+%                 the binary images that are created (if necessary) of the 
+%                 significant voxels in a contrast
 todo.significance.thresholdType   = 'uncorrected';
 todo.significance.threshold       = 0.001;
+todo.significance.extent          = 0;
 
 % Which denoise level to use. (ICA-AROMA denoised data, using not 
 % nonaggressive, nor aggressive, but the regressors in glm. Possible to 
