@@ -5,6 +5,10 @@ function create_significant_voxels_binary(SPMmat,contrast,options)
 % SPMmat    : char; path to SPM.mat file
 % contrast  : cellstr; name of contrasts to export significant voxels for.
 %             Can be one contrast or an array to export multiple.
+% options   : struct with fields:
+%               todo.significance.thresholdType : 'uncorrected' or 'fwe'
+%               todo.significance.threshold     : p-value threshold
+%               todo.significance.extent        : minumum cluster size
 % 
 % OUTPUT
 % Binary nifti files per contrast in which only the significant voxels at
@@ -47,30 +51,35 @@ for iCon = 1:numel(SPM.xCon)
 
     % Threshold type, value and min cluster size
     if strcmpi(options.todo.significance.thresholdType,'uncorrected')
-        jobs{conCount}.spm.stats.significance.conspec(1).threshdesc = 'none';
+        jobs{conCount}.spm.stats.results.conspec(1).threshdesc = 'none';
     elseif strcmpi(options.todo.significance.thresholdType,'fwe')
-        jobs{conCount}.spm.stats.significance.conspec(1).threshdesc = 'fwe';
+        jobs{conCount}.spm.stats.results.conspec(1).threshdesc = 'fwe';
     end
     jobs{conCount}.spm.stats.results.conspec(1).thresh = options.todo.significance.threshold;
     jobs{conCount}.spm.stats.results.conspec(1).extent = options.todo.significance.extent;
 
     % Don't use mask
     jobs{conCount}.spm.stats.results.conspec(1).mask.none = 1;
-
+    
     % Define basename for output image
     % Get p as string for use in basename
     p = regexp(num2str(options.todo.significance.threshold), '\.', 'split');
     p = p{2};
-    jobs{conCount}.spm.stats.significance.export{1}.binary.basename = sprintf('significant_voxels_%s_%s_p%s', ...
+    jobs{conCount}.spm.stats.results.export{1}.binary.basename = sprintf('significant_voxels_%s_%s_p%s', ...
                                                                             SPM.xCon(iCon).name, ...
                                                                             options.todo.significance.thresholdType, ...
                                                                             p);
 
     % Export as binary
     jobs{conCount}.spm.stats.results.units = 1;
-
+    
     % Increase contrast count
     conCount = conCount + 1;
+    
+    % Break if all requested contrasts have been processed
+    if conCount > numel(contrast)
+        break
+    end
 end
 
 % Run SPM job
@@ -84,6 +93,9 @@ function run_spm_jobs(jobName,jobs)
 % 
 % Subfunction to run spm jobs.
 % 
+
+% Initialise cgf utilities
+spm_jobman('initcfg');
 
 % Initialise job
 jobId = cfg_util('initjob', jobs);
