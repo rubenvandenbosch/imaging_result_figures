@@ -74,11 +74,11 @@ for iCon = 1:numel(SPM.xCon)
     % Skip this contrast if not selected for export
     % .....................................................................
     % If mri group level, there may be covariate contrasts. Those are named 
-    % '<contrastName>_x_<covariateName>'. If covariate contrast, always
+    % "<contrastName>_x_<covariateName>". If covariate contrast, always
     % process because they follow main contrast, which has already been
     % checked for processing.
     % If pet, then there may be an inversed contrast, which is named
-    % "negative_<contrastName>. Same as mri, skip depends on primary
+    % "negative_<contrastName>". Same as mri, skip depends on primary
     % contrast.
     switch modality
         case 'mri'
@@ -86,7 +86,7 @@ for iCon = 1:numel(SPM.xCon)
                 continue
             end
         case 'pet'
-            if ~contains(contrast,'negative') && ~options.todo.contrast.(contrast).do
+            if ~contains(lower(contrast),'negative') && ~options.todo.contrast.(contrast).do
                 continue
             end
     end
@@ -105,7 +105,7 @@ for iCon = 1:numel(SPM.xCon)
 
         % If the binary image file does not exist, create it
         if ~exist(layers(2).mask.file,'file')
-            create_significant_voxels_binary(SPMmat,cellstr(contrast),options);
+            create_significant_voxels_binary(SPMmat,cellstr(contrast),modality,options);
         end
     elseif strcmp(options.todo.figType,'dualCoded')
            
@@ -130,7 +130,7 @@ for iCon = 1:numel(SPM.xCon)
         
         % If that binary image file does not exist, create it
         if ~exist(layers(3).color.file,'file')
-            create_significant_voxels_binary(SPMmat,cellstr(contrast),options);
+            create_significant_voxels_binary(SPMmat,cellstr(contrast),modality,options);
         end
     end
 
