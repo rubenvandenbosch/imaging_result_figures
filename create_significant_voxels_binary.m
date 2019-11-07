@@ -86,6 +86,16 @@ end
 % -------------------------------------------------------------------------
 jobName = 'export_contrasts_binary';
 run_spm_jobs(jobName,jobs)
+
+% SPM prepends "spmT_xxxx" to exported files. Remove it from the binary
+% output files, because they are not Tmaps.
+% -------------------------------------------------------------------------
+[outDir,~,~] = fileparts(SPMmat);
+files = dir(fullfile(outDir,'spmT_*significant_voxels*'));
+for ifile = 1:numel(files)
+    newNm = regexprep(files(ifile).name,'spmT_\d\d\d\d_','');
+    movefile(fullfile(files(ifile).folder,files(ifile).name), fullfile(files(ifile).folder,newNm));
+end
 end
 
 function run_spm_jobs(jobName,jobs)
