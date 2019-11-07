@@ -10,11 +10,11 @@ function results_create_figures(options,layers,settings,SPMmat,varargin)
 % whether there is a directory called "mri" or "pet" (case-insensitive) in
 % the path to the SPM.mat. For MRI images a distinction is made between
 % individual level and group level images for the figure titles.
-% 
+%
 % Creating the figures requires binary nifti images that contain the
 % significant voxels at the specified significance levels. If these do not
 % exist, they are created.
-%
+% 
 % INPUT
 % - options   : struct with user specified info
 % - layers    : struct with layer info for slice_display toolbox
@@ -78,7 +78,7 @@ for iCon = 1:numel(SPM.xCon)
     % process because they follow main contrast, which has already been
     % checked for processing.
     % If pet, then there may be an inversed contrast, which is named
-    % 'negative_<contrastName>'. Same as mri, skip depends on primary
+    % "negative_<contrastName>. Same as mri, skip depends on primary
     % contrast.
     switch modality
         case 'mri'
@@ -98,16 +98,17 @@ for iCon = 1:numel(SPM.xCon)
         % T-map image
         layers(2).color.file = fullfile(dirs.spm,sprintf('spmT_%.4d.nii',iCon));
 
-        % Binary image of significant voxels
-        layers(2).mask.file  = fullfile(dirs.spm,sprintf('spmT_%.4d_significant_voxels_%s_%s_p%s.nii', ...
-                                                            iCon,contrast,options.todo.significance.thresholdType,p));
-															
+        % Binary image of significant voxels.
+        % Try combined positive and negative contrast significant voxels
+        layers(2).mask.file  = fullfile(dirs.spm,sprintf('significant_voxels_%s_%s_p%s.nii', ...
+                                                            contrast,options.todo.significance.thresholdType,p));
+
         % If the binary image file does not exist, create it
         if ~exist(layers(2).mask.file,'file')
             create_significant_voxels_binary(SPMmat,cellstr(contrast),options);
         end
     elseif strcmp(options.todo.figType,'dualCoded')
-
+           
         % Color file and label (escape '_' characters in label to prevent
         % unwanted subscripts)
         layers(2).color.file  = fullfile(dirs.spm,sprintf('con_%.4d.nii',iCon));
@@ -117,10 +118,17 @@ for iCon = 1:numel(SPM.xCon)
         layers(2).opacity.file = fullfile(dirs.spm,sprintf('spmT_%.4d.nii',iCon));
 
         % Layer 3: Contour of significantly activated voxels
-        layers(3).color.file  = fullfile(dirs.spm,sprintf('spmT_%.4d_significant_voxels_%s_%s_p%s.nii', ...
-                                                            iCon,contrast,options.todo.significance.thresholdType,p));
-		
-		% If the binary image file does not exist, create it
+        % Try combined positive and negative contrast significant voxels
+        layers(3).color.file = fullfile(dirs.spm,sprintf('significant_voxels_combinedPosNeg_%s_%s_p%s.nii', ...
+                                            contrast,options.todo.significance.thresholdType,p));
+        
+        % If that doesn't exist, use pos/neg only contrast binary
+        if ~exist(layers(3).color.file,'file')
+            layers(3).color.file = fullfile(dirs.spm,sprintf('significant_voxels_%s_%s_p%s.nii', ...
+                                                              contrast,options.todo.significance.thresholdType,p));
+        end
+        
+        % If that binary image file does not exist, create it
         if ~exist(layers(3).color.file,'file')
             create_significant_voxels_binary(SPMmat,cellstr(contrast),options);
         end
