@@ -47,7 +47,7 @@ if ~exist(dirs.figures,'dir')
     mkdir(dirs.figures)
 end
 
-% Determin modality
+% Determine modality
 if contains(dirs.spm, [filesep 'mri' filesep], 'IgnoreCase',true)
     modality = 'mri';
 elseif contains(dirs.spm, [filesep 'pet' filesep], 'IgnoreCase',true)
@@ -86,7 +86,7 @@ for iCon = 1:numel(SPM.xCon)
                 continue
             end
         case 'pet'
-            if ~contains(contrast,'inverse') && ~options.todo.contrast.(contrast).do
+            if ~contains(contrast,'negative') && ~options.todo.contrast.(contrast).do
                 continue
             end
     end
@@ -141,8 +141,8 @@ for iCon = 1:numel(SPM.xCon)
                 slices       = options.todo.contrast.(contrast).slices;
             end
         case 'pet'
-            if contains(contrast,'inverse')
-                baseCon      = erase(contrast,'inverse_');
+            if contains(contrast,'negative')
+                baseCon      = erase(contrast,'negative_');
                 orientations = options.todo.contrast.(baseCon).orientations;
                 slices       = options.todo.contrast.(baseCon).slices;
             else
