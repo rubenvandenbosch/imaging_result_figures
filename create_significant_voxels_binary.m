@@ -1,11 +1,12 @@
-function create_significant_voxels_binary(SPMmat,contrast,options)
+function create_significant_voxels_binary(SPMmat,contrast,modality,options)
 % function to export binary images of significant voxels
 % 
 % INPUT
 % SPMmat    : char; path to SPM.mat file
 % contrast  : cellstr; name of contrasts to export significant voxels for.
 %             Can be one contrast or an array to export multiple.
-% options   : struct with fields:
+% modality  : char; 'mri' OR 'pet'
+% options   : struct with at least these required fields:
 %               todo.significance.thresholdType : 'uncorrected' or 'fwe'
 %               todo.significance.threshold     : p-value threshold
 %               todo.significance.extent        : minumum cluster size
@@ -25,6 +26,12 @@ function create_significant_voxels_binary(SPMmat,contrast,options)
 % Create SPM job
 % -------------------------------------------------------------------------
 clear jobs
+
+% Load modality defaults
+if strcmpi(modality,'MRI')
+    modality = 'FMRI';
+end
+spm('defaults',upper(modality));
 
 % Load SPM for contrast info
 load(SPMmat)
