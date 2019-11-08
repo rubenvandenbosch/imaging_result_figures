@@ -58,6 +58,9 @@ end
 p = regexp(num2str(options.todo.significance.threshold), '\.', 'split');
 p = p{2};
 
+% Get all contrast names from options struct
+cons = fieldnames(options.todo.contrast);
+
 % Load SPM for contrast info
 load(SPMmat);
 
@@ -71,26 +74,25 @@ for iCon = 1:numel(SPM.xCon)
     % Replace potential white spaces in contrast name with '_'
     contrast = strrep(contrastName, ' ', '_');
     
-    % Skip this contrast if not selected for export
+    % Skip this contrast if not selected
     % .....................................................................
-    % If mri group level, there may be covariate contrasts. Those are named 
-    % "<contrastName>_x_<covariateName>". If covariate contrast, always
-    % process because they follow main contrast, which has already been
-    % checked for processing.
-    % If pet, then there may be an inversed contrast, which is named
-    % "negative_<contrastName>". Same as mri, skip depends on primary
-    % contrast.
-    switch modality
-        case 'mri'
-            if ~contains(contrast,'_x_') && ~options.todo.contrast.(contrast).do
-                continue
-            end
-        case 'pet'
-            if ~contains(lower(contrast),'negative') && ~options.todo.contrast.(contrast).do
-                continue
-            end
+    % There may be more contrasts in the SPM than the main one, e.g. for
+    % covariates or negative contrasts. 
+    % Check whether to process current contrast based on the main contrast
+    % name. Names of covariate contrasts etc must thus include the main
+    % contrast name.
+    for i = 1:numel(cons)
+        if contains(contrast,cons{i})
+            % Get contrast basename
+            mainConName = char(regexp(contrast,cons{i},'match'));
+            break
+        end
     end
-    
+    % Skip contrast if main contrast was not selected for processing
+    if ~options.todo.contrast.(mainConName).do
+        continue
+    end
+        
     % Contrast specific layer settings
     % ---------------------------------------------------------------------
     if strcmp(options.todo.figType,'Tmap')
@@ -137,27 +139,8 @@ for iCon = 1:numel(SPM.xCon)
     % Create and save figures
     % ---------------------------------------------------------------------
     % Get orientations and slices for this contrast.
-    % If covariate contrast, use base contrast name
-    switch modality
-        case 'mri'
-            if contains(contrast,'x')
-                baseCon      = contrast(1:strfind(contrast,'_x_')-1);
-                orientations = options.todo.contrast.(baseCon).orientations;
-                slices       = options.todo.contrast.(baseCon).slices;
-            else
-                orientations = options.todo.contrast.(contrast).orientations;
-                slices       = options.todo.contrast.(contrast).slices;
-            end
-        case 'pet'
-            if contains(contrast,'negative')
-                baseCon      = erase(contrast,'negative_');
-                orientations = options.todo.contrast.(baseCon).orientations;
-                slices       = options.todo.contrast.(baseCon).slices;
-            else
-                orientations = options.todo.contrast.(contrast).orientations;
-                slices       = options.todo.contrast.(contrast).slices;
-            end
-    end
+    orientations = options.todo.contrast.(mainConName).orientations;
+    slices       = options.todo.contrast.(mainConName).slices;
     
     % Create figure title
     % .....................................................................
@@ -165,7 +148,6 @@ for iCon = 1:numel(SPM.xCon)
     % images use only contrast name.
     switch modality
         case 'mri'
-            
             % Individual level
             if contains(dirs.spm,options.io.firstLevelDir)
 
@@ -178,10 +160,10 @@ for iCon = 1:numel(SPM.xCon)
                 % Get drug for this session
                 drug = drugcodes.(sprintf('session%d',sesNr))(drugcodes.subject==subNr);
 
-                % Figure title
-                settings.fig_specs.title = [subject{1} ' ' session{1} ' ' sprintf('(%s)',drug{1}) ' : ' contrast];
+                % Figure title. Escape '_' to prevent subscripts
+                settings.fig_specs.title = [subject{1} ' ' session{1} ' ' sprintf('(%s)',drug{1}) ' : ' strrep(contrastName,'_','\_')];
 
-            % Group level
+            % Group level. Escape '_' to prevent subscripts
             elseif contains(dirs.spm,options.io.groupLevelDir)
 
                 % Get drug or drug comparison name, or sess average
@@ -190,7 +172,7 @@ for iCon = 1:numel(SPM.xCon)
                 prefix      = prefix{1};
 
                 % Use original name not including underscores for covariates
-                settings.fig_specs.title = ['groupLevel : ' prefix ' ' contrastName];
+                settings.fig_specs.title = ['groupLevel : ' prefix ' ' strrep(contrastName,'_','\_')];
             end
         case 'pet'
             % Escape '_' to prevent subscripts
@@ -201,23 +183,27 @@ for iCon = 1:numel(SPM.xCon)
     for iOr = 1:numel(orientations)
 
         % Orientation specific settings
-        settings.slice.orientation          = orientations{iOr};
-        settings.slice.disp_slices          = slices.(orientations{iOr});
+        settings.slice.orientation              = orientations{iOr};
+        settings.slice.disp_slices              = slices.(orientations{iOr});
         if isempty(options.figure.num_columns)
             settings.fig_specs.n.slice_column   = numel(slices.(orientations{iOr}));
         end
 
-        % Create figure
+        % Create and save figure
+        % .................................................................
+        % Prevent warnings spam
+        warning off
         [~,~,h_figure] = sd_display(layers,settings);
 
         % Prevent white text becoming black after save
         set(h_figure,'InvertHardCopy','off')
-
+        
         % Save and close figure
         fname = sprintf('result_%s_%s_%s_%s_p%s.png', ...
                             options.todo.figType,contrast,orientations{iOr},options.todo.significance.thresholdType,p);
         saveas(h_figure,fullfile(dirs.figures,fname));
         close(h_figure);
+        warning on
     end
 end
 end
