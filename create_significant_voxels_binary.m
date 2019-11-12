@@ -42,8 +42,9 @@ load(SPMmat)
 conCount = 1;
 for iCon = 1:numel(SPM.xCon)
 
-    % Skip this contrast if not selected for export
-    if ~(strcmp(SPM.xCon(iCon).name,contrast{conCount}))
+    % Skip this contrast if not selected for export. Prevent white spaces
+    % in contrast names messing it up
+    if ~(strcmp(strrep(SPM.xCon(iCon).name,' ','_'),strrep(contrast{conCount},' ','_')))
         continue
     end
 
