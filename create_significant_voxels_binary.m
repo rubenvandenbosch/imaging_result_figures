@@ -41,10 +41,13 @@ load(SPMmat)
 % Loop over existing contrasts in the SPM
 conCount = 1;
 for iCon = 1:numel(SPM.xCon)
-
-    % Skip this contrast if not selected for export. Prevent white spaces
-    % in contrast names messing it up
-    if ~(strcmp(strrep(SPM.xCon(iCon).name,' ','_'),strrep(contrast{conCount},' ','_')))
+    
+    % Replace potential white spaces in contrast name with "_"
+    conName = strrep(SPM.xCon(iCon).name,' ','_');
+    
+    % Skip this contrast if not selected for export. Prevent potential 
+    % white spaces in contrast names messing it up
+    if ~(strcmp(conName,strrep(contrast{conCount},' ','_')))
         continue
     end
 
@@ -74,7 +77,7 @@ for iCon = 1:numel(SPM.xCon)
     p = regexp(num2str(options.todo.significance.threshold), '\.', 'split');
     p = p{2};
     jobs{conCount}.spm.stats.results.export{1}.binary.basename = sprintf('significant_voxels_%s_%s_p%s', ...
-                                                                            SPM.xCon(iCon).name, ...
+                                                                            conName, ...
                                                                             options.todo.significance.thresholdType, ...
                                                                             p);
 
