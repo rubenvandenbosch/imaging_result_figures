@@ -20,6 +20,6 @@ Adapt the user input in the example code to your needs in order to run it.
 - html collection of all figures in a separate directory (can specify which orientations to include)
 
 ## Author
-Ruben van den Bosch
-Donders Institute, Radboud University Nijmegen
+Ruben van den Bosch  
+Donders Institute, Radboud University Nijmegen  
 The Netherlands
