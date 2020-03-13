@@ -43,7 +43,7 @@ todo.createHTML     = true;
 
 % Output figure type: Tmap, dualCoded
 % -------------------------------------------------------------------------
-todo.figType = 'tmap';
+todo.figType = 'dualCoded';
 
 % Contrast settings
 % -------------------------------------------------------------------------
@@ -91,7 +91,7 @@ todo.drugcodes = fullfile(projectDir,'</path/to/unblinding/code.csv>');
 
 % Process group level average of sessions? (if multi-session study)
 % -------------------------------------------------------------------------
-todo.average    = true;
+todo.average    = false;
 
 % Significance level
 % -------------------------------------------------------------------------
@@ -115,10 +115,27 @@ todo.denoise.semiaggressive = true;
 subjects = 1:100;
 sessions = [1 2 3];
 
+% Path to anatomical scan to use to project blobs on
+% -------------------------------------------------------------------------
+% fig.anatImage = fullfile(spm('Dir'),'canonical','single_subj_T1.nii');
+fig.anatImage = fullfile(projectDir,'bids','derivatives','mri','fmriprep','group','group_average_T1scan.nii');
+
+% Set the absolute t-value range that codes opacity in dual-coded images.
+% -------------------------------------------------------------------------
+% Open a contrast's results window in SPM GUI to see t-threshold.
+% Option to set different values for different significance settings.
+if strcmpi(todo.significance.thresholdType,'uncorrected') && todo.significance.threshold == 0.001
+    fig.opacityRange = [0 3.18];
+elseif strcmpi(options.todo.significance.thresholdType,'uncorrected') && options.todo.significance.threshold == 0.01
+    fig.opacityRange = [0 2.33];
+elseif strcmpi(options.todo.significance.thresholdType,'fwe') && options.todo.significance.threshold == 0.05
+    fig.opacityRange = [0 3.18]; % [0 4.83];
+end
+
 % Optionally set a maximum number of columns for the output figures. Leave
 % empty, [], for unspecified.
 % -------------------------------------------------------------------------
-figure.num_columns = [];
+fig.num_columns = [];
 
 % Combine all in options struct
 % =========================================================================
@@ -127,7 +144,7 @@ options.level     = level;
 options.todo      = todo;
 options.subjects  = subjects;
 options.sessions  = sessions;
-options.figure    = figure;
+options.figure    = fig;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % END USER INPUT
@@ -171,7 +188,7 @@ end
 % =========================================================================
 
 if options.todo.createFigures
-
+    
     % Loop over denoising levels
     % ---------------------------------------------------------------------
     denoise_lvls = fieldnames(options.todo.denoise);
@@ -190,7 +207,7 @@ if options.todo.createFigures
         sd_dir = fullfile(options.io.codeDir,'slice_display');
         addpath(genpath(options.io.slice_display_dir));
         addpath(options.io.panel_dir);
-
+        
         % Get custom colormaps
         load(fullfile(sd_dir,'colormaps.mat'));
 
@@ -217,14 +234,7 @@ if options.todo.createFigures
         % Dual-coded general options
         elseif strcmp(options.todo.figType,'dualCoded')
             layers(2).opacity.label         = '| t |';
-
-            if strcmpi(options.todo.significance.thresholdType,'uncorrected') && options.todo.significance.threshold == 0.001
-                layers(2).opacity.range     = [0 3.14];
-            elseif strcmpi(options.todo.significance.thresholdType,'uncorrected') && options.todo.significance.threshold == 0.01
-                layers(2).opacity.range     = [0 2.33];
-            elseif strcmpi(options.todo.significance.thresholdType,'fwe') && options.todo.significance.threshold == 0.05
-                layers(2).opacity.range     = [0 4.83];
-            end
+            layers(2).opacity.range         = options.figure.opacityRange;
         end
 
         % Additional range setting for color map to fix/match them
@@ -249,7 +259,7 @@ if options.todo.createFigures
                 
                 % Load drug codes so drug can be added to figure titles
                 % ---------------------------------------------------------
-                drugcodes = dataset('file',options.todo.drugcodes,'delimiter',',');
+                drugcodes = readtable(options.todo.drugcodes,'Delimiter',',');
                 
                 % Loop over subjects and sessions
                 % ---------------------------------------------------------

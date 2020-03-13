@@ -64,7 +64,7 @@ todo.contrast.<contrast_name>.do        = true;
 
 % Significance level
 % -------------------------------------------------------------------------
-% thresholdType : 'uncorrected', 'fwe'
+% thresholdType : 'uncorrected' OR 'fwe'
 % threshold     : p-value threshold
 % extent        : minimum cluster size in number of voxels to include in
 %                 the binary images that are created (if necessary) of the 
@@ -73,15 +73,33 @@ todo.significance.thresholdType   = 'uncorrected';
 todo.significance.threshold       = 0.001;
 todo.significance.extent          = 0;
 
+% Path to anatomical scan to use to project blobs on
+% -------------------------------------------------------------------------
+% fig.anatImage = fullfile(spm('Dir'),'canonical','single_subj_T1.nii');
+fig.anatImage = fullfile(projectDir,'bids','derivatives','mri','fmriprep','group','group_average_T1scan.nii');
+
+% Set the absolute t-value range that codes opacity in dual-coded images.
+% -------------------------------------------------------------------------
+% Open a contrast's results window in SPM GUI to see t-threshold.
+% Option to set different values for different significance settings.
+if strcmpi(todo.significance.thresholdType,'uncorrected') && todo.significance.threshold == 0.001
+    fig.opacityRange = [0 3.18];
+elseif strcmpi(options.todo.significance.thresholdType,'uncorrected') && options.todo.significance.threshold == 0.01
+    fig.opacityRange = [0 2.33];
+elseif strcmpi(options.todo.significance.thresholdType,'fwe') && options.todo.significance.threshold == 0.05
+    fig.opacityRange = [0 3.18]; % [0 4.83];
+end
+
 % Optionally set a maximum number of columns for the output figures. Leave
 % empty, [], for unspecified.
-figure.num_columns = 5;
+% -------------------------------------------------------------------------
+fig.num_columns = 5;
 
 % Combine all in options struct
 % =========================================================================
 options.io        = iostruct;
 options.todo      = todo;
-options.figure    = figure;
+options.figure    = fig;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % END USER INPUT
@@ -104,11 +122,10 @@ addpath(options.io.functionsDir)
 if options.todo.createFigures
     
     % Make sure directory containing slice display functions is on path
-    sd_dir = fullfile(options.io.codeDir,'slice_display');
-    addpath(genpath(sd_dir));
+    addpath(genpath(options.io.slice_display_dir));
 
     % Get custom colormaps
-    load(fullfile(sd_dir,'colormaps.mat'));
+    load(fullfile(options.io.slice_display_dir,'colormaps.mat'));
 
     % Define common settings in layers
     % ---------------------------------------------------------------------
@@ -120,7 +137,7 @@ if options.todo.createFigures
     settings                            = sd_config_settings('init');
 
     % Layer 1: anatomical image (same for all, MNI space)
-    layers(1).color.file                = fullfile(spm('Dir'),'canonical','single_subj_T1.nii');
+    layers(1).color.file                = options.figure.anatImage;
     layers(1).color.map                 = gray(256);
 
     % Layer 2: thresholded t-map or dual-coded
@@ -133,14 +150,7 @@ if options.todo.createFigures
     % Dual-coded general options
     elseif strcmp(options.todo.figType,'dualCoded')
         layers(2).opacity.label         = '| t |';
-
-        if strcmpi(options.todo.significance.thresholdType,'uncorrected') && options.todo.significance.threshold == 0.001
-            layers(2).opacity.range     = [0 3.14];
-        elseif strcmpi(options.todo.significance.thresholdType,'uncorrected') && options.todo.significance.threshold == 0.01
-            layers(2).opacity.range     = [0 2.33];
-        elseif strcmpi(options.todo.significance.thresholdType,'fwe') && options.todo.significance.threshold == 0.05
-            layers(2).opacity.range     = [0 3.18];
-        end
+        layers(2).opacity.range         = options.figure.opacityRange;
     end
 
     % Additional range setting for color map to fix/match them
