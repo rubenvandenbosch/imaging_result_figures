@@ -124,6 +124,9 @@ for iCon = 1:numel(conNms)
     % significant voxels to binary files
     % ---------------------------------------------------------------------
     % Loop over potential multiple requested p-thresholds for export
+    if ~iscell(sigOptions.threshold)
+        sigOptions.threshold = {sigOptions.threshold};
+    end
     for ip = 1:numel(sigOptions.threshold)
 
         % Get p-value threshold as string for use in file names
