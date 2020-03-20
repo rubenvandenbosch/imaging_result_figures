@@ -78,18 +78,28 @@ for iCon = 1:numel(SPM.xCon)
     % .....................................................................
     % There may be more contrasts in the SPM than the main one, e.g. for
     % covariates or negative contrasts. 
-    % Check whether to process current contrast based on the main contrast
-    % name. Names of covariate contrasts etc must thus include the main
+    % Contrasts of covariates must have names that start with the main
     % contrast name.
+    % Skip negative contrasts, they are only needed to obtain binary images
+    % of the significant voxels; negative effects will show in the created 
+    % figures. Negative contrasts have a prefix like "negative_"
+    % 
+    % Thus, skip contrasts that are not selected, and skip any contrast 
+    % that does not start with a contrast name that was selected for 
+    % processing (i.e. skip prefixes, but process covariates).
+    clear mainConName
     for i = 1:numel(cons)
         if contains(contrast,cons{i})
             % Get contrast basename
-            mainConName = char(regexp(contrast,cons{i},'match'));
+            mainConName = cons{i};
             break
         end
     end
-    % Skip contrast if main contrast was not selected for processing
-    if ~options.todo.contrast.(mainConName).do
+    if ~exist('mainConName','var')
+        warning('Contrast %s in SPM not found in options. Skipping this contrast. \nSPM file: %s',contrastName,SPMmat);
+        continue
+    end
+    if ~options.todo.contrast.(mainConName).do || ~startsWith(contrast,mainConName)
         continue
     end
         
@@ -100,14 +110,13 @@ for iCon = 1:numel(SPM.xCon)
         % T-map image
         layers(2).color.file = fullfile(dirs.spm,sprintf('spmT_%.4d.nii',iCon));
 
-        % Binary image of significant voxels.
-        % Try combined positive and negative contrast significant voxels
+        % Binary image of significant voxels
         layers(2).mask.file  = fullfile(dirs.spm,sprintf('significant_voxels_%s_%s_p%s.nii', ...
                                                             contrast,options.todo.significance.thresholdType,p));
 
         % If the binary image file does not exist, create it
         if ~exist(layers(2).mask.file,'file')
-            create_significant_voxels_binary(SPMmat,cellstr(contrast),modality,options);
+            create_significant_voxels_binary(SPMmat,cellstr(contrast),modality,options.todo.significance);
         end
     elseif strcmp(options.todo.figType,'dualCoded')
            
@@ -120,19 +129,13 @@ for iCon = 1:numel(SPM.xCon)
         layers(2).opacity.file = fullfile(dirs.spm,sprintf('spmT_%.4d.nii',iCon));
 
         % Layer 3: Contour of significantly activated voxels
-        % Try combined positive and negative contrast significant voxels
-        layers(3).color.file = fullfile(dirs.spm,sprintf('significant_voxels_combinedPosNeg_%s_%s_p%s.nii', ...
-                                            contrast,options.todo.significance.thresholdType,p));
-        
-        % If that doesn't exist, use pos/neg only contrast binary
-        if ~exist(layers(3).color.file,'file')
-            layers(3).color.file = fullfile(dirs.spm,sprintf('significant_voxels_%s_%s_p%s.nii', ...
-                                                              contrast,options.todo.significance.thresholdType,p));
-        end
+        % Binary image of significant voxels
+        layers(3).color.file = fullfile(dirs.spm,sprintf('significant_voxels_%s_%s_p%s.nii', ...
+                                                            contrast,options.todo.significance.thresholdType,p));
         
         % If that binary image file does not exist, create it
         if ~exist(layers(3).color.file,'file')
-            create_significant_voxels_binary(SPMmat,cellstr(contrast),modality,options);
+            create_significant_voxels_binary(SPMmat,cellstr(contrast),modality,options.todo.significance);
         end
     end
 
@@ -151,28 +154,40 @@ for iCon = 1:numel(SPM.xCon)
             % Individual level
             if contains(dirs.spm,options.io.firstLevelDir)
 
-                % Get subject and session
+                % Get subject number
                 subject = regexp(dirs.spm,'sub-\d\d\d','match');
                 subNr   = str2double(regexp(subject{1},'\d\d\d','match'));
-                session = regexp(dirs.spm,'ses-drug\d','match');
-                sesNr   = str2double(regexp(session{1},'\d','match'));
+                
+                % If firstLevel sessions are concatenated in one GLM, then
+                % drug is part of the contrast name. Otherwise get drug
+                % name from drug deblinding code.
+                if isfield(options.firsLevelType) && strcmpi(options.firstLevelType,'concatenate')
+                    drug = strsplit(contrast,'_');
+                    drug = drug{1};
+                    
+                    % Figure title. Escape '_' to prevent subscripts
+                    settings.fig_specs.title = [subject{1} ' ' sprintf('(%s)',drug) ' : ' strrep(contrastName,'_','\_')];
+                else
+                    session = regexp(dirs.spm,'ses-drug\d','match');
+                    sesNr   = str2double(regexp(session{1},'\d','match'));
 
-                % Get drug for this session
-                drug = drugcodes.(sprintf('session%d',sesNr))(drugcodes.subject==subNr);
+                    % Get drug for this session
+                    drug = drugcodes.(sprintf('session%d',sesNr))(drugcodes.subject==subNr);
 
-                % Figure title. Escape '_' to prevent subscripts
-                settings.fig_specs.title = [subject{1} ' ' session{1} ' ' sprintf('(%s)',drug{1}) ' : ' strrep(contrastName,'_','\_')];
-
+                    % Figure title. Escape '_' to prevent subscripts
+                    settings.fig_specs.title = [subject{1} ' ' session{1} ' ' sprintf('(%s)',drug{1}) ' : ' strrep(contrastName,'_','\_')];
+                end
+                
             % Group level. Escape '_' to prevent subscripts
             elseif contains(dirs.spm,options.io.groupLevelDir)
 
                 % Get drug or drug comparison name, or sess average
                 [~,dirNm,~] = fileparts(dirs.spm);
-                prefix      = regexp(dirNm,'_','split');
-                prefix      = prefix{1};
+                drug      = regexp(dirNm,'_','split');
+                drug      = drug{1};
 
                 % Use original name not including underscores for covariates
-                settings.fig_specs.title = ['groupLevel : ' prefix ' ' strrep(contrastName,'_','\_')];
+                settings.fig_specs.title = ['groupLevel : ' drug ' ' strrep(contrastName,'_','\_')];
             end
         case 'pet'
             % Escape '_' to prevent subscripts
@@ -205,5 +220,14 @@ for iCon = 1:numel(SPM.xCon)
         close(h_figure);
         warning on
     end
+    
+    % Report to user which files were used for figure creation
+    % ---------------------------------------------------------------------
+    disp(' ')
+    disp('Figures created using these files:')
+    for ix = 1:numel(layers)
+        disp(['    ' layers(ix).color.file])
+    end
+    disp(' ')
 end
 end
