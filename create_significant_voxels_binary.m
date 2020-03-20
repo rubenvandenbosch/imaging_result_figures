@@ -1,4 +1,4 @@
-function create_significant_voxels_binary(SPMmat,contrast,modality,sigOptions)
+function create_significant_voxels_binary(SPMmat,contrast,modality,sigOptions,varargin)
 % create_significant_voxels_binary(SPMmat,contrast,modality,sigOptions)
 % 
 % SUMMARY
@@ -20,6 +20,13 @@ function create_significant_voxels_binary(SPMmat,contrast,modality,sigOptions)
 %       threshold     : cell array with p-value threshold(s)
 %       extent        : double; minumum cluster size
 % 
+% Optional input:
+% create_significant_voxels_binary(SPMmat,contrast,modality,sigOptions,isInitCfg)
+% 
+% isInitCfg  : true/false; have SPM cfg utilities already been loaded. If
+%              true they are not loaded again to save time. If not
+%              specified the utilities will be loaded.
+% 
 % OUTPUT
 % Binary nifti files per contrast in which only the significant voxels (for
 % both positive and negative effects) at the requested significance level 
@@ -31,6 +38,14 @@ function create_significant_voxels_binary(SPMmat,contrast,modality,sigOptions)
 % September 2019
 %
 
+% Process optional input argument
+if exist('varargin','var')
+    assert(numel(varargin) == 1, 'Too many input arguments');
+    isInitCfg = varargin{1};
+else
+    isInitCfg = false;
+end
+
 % Create SPM jobs
 % =========================================================================
 clear jobs
@@ -41,8 +56,10 @@ if strcmpi(modality,'MRI')
 end
 spm('defaults',upper(modality));
 
-% Initialise SPM cgf utilities
-spm_jobman('initcfg');
+% Initialise SPM cfg utilities if necessary
+if ~isInitCfg
+    spm_jobman('initcfg');
+end
 
 % Load SPM and get contrasts info
 % -------------------------------------------------------------------------
@@ -68,8 +85,13 @@ jobCount = 1;  % counter for job numbers
 for iCon = 1:numel(conNms)
     conName = conNms{iCon};
     
-    % Skip this contrast if not selected for export.
+    % Skip this contrast if not selected for export or if it's a negative
+    % contrast of another requested contrast
     if ~ismember(cellstr(conName),contrast)
+        continue
+    elseif startsWith(conName,'negative_') && ismember(cellstr(strrep(conName,'negative_','')),contrast)
+        continue
+    elseif startsWith(conName,'inverse_') && ismember(cellstr(strrep(conName,'inverse_','')),contrast)
         continue
     end
     
@@ -157,9 +179,11 @@ for iCon = 1:numel(conNms)
             jobs{jobCount}.spm.stats.results.conspec(1).titlestr = '';
 
             % Find contrast index. Use names from SPM struct because new
-            % contrasts may have been added in previous jobs.
+            % contrasts may have been added in previous jobs. Do replace
+            % potential white spaces in SPM struct contrast names with "_"
+            % when comparing with current contrast name.
             for conIx = 1:numel(SPM.xCon)
-                if strcmp(name,SPM.xCon(conIx).name)
+                if strcmp(name,strrep(SPM.xCon(conIx).name,' ','_'))
                     jobs{jobCount}.spm.stats.results.conspec(1).contrasts = conIx;
                     break
                 end
