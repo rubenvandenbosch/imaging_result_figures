@@ -191,6 +191,12 @@ if options.todo.createFigures
         % Path to SPM
         SPMmat = fullfile(options.io.derivPETBEHdir,conName,'SPM.mat');
         
+		% Skip if SPM.mat does not exist
+        if ~exist(SPMmat,'file')
+            warning('%s does not exist. Skipping this session.',SPMmat);
+            continue
+        end
+		
         % Create figures
         results_create_figures(options,layers,settings,SPMmat)
         

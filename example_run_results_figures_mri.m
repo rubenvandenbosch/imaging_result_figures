@@ -305,6 +305,12 @@ if options.todo.createFigures
                         % Path to group level contrast SPM
                         SPMmat = fullfile(options.io.groupLevelDir,denoise,sprintf('%s_%s',todo.drugs{idrug},contrast),'SPM.mat');
 
+						% Skip if SPM.mat does not exist
+                        if ~exist(SPMmat,'file')
+                            warning('%s does not exist. Skipping this contrast.',SPMmat);
+                            continue
+                        end
+						
                         % Create figures
                         results_create_figures(options,layers,settings,SPMmat)
                     end
