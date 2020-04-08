@@ -84,9 +84,9 @@ fig.anatImage = fullfile(projectDir,'bids','derivatives','mri','fmriprep','group
 % Option to set different values for different significance settings.
 if strcmpi(todo.significance.thresholdType,'uncorrected') && todo.significance.threshold == 0.001
     fig.opacityRange = [0 3.18];
-elseif strcmpi(options.todo.significance.thresholdType,'uncorrected') && options.todo.significance.threshold == 0.01
+elseif strcmpi(todo.significance.thresholdType,'uncorrected') && todo.significance.threshold == 0.01
     fig.opacityRange = [0 2.33];
-elseif strcmpi(options.todo.significance.thresholdType,'fwe') && options.todo.significance.threshold == 0.05
+elseif strcmpi(todo.significance.thresholdType,'fwe') && todo.significance.threshold == 0.05
     fig.opacityRange = [0 3.18]; % [0 4.83];
 end
 
