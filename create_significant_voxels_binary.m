@@ -39,7 +39,7 @@ function create_significant_voxels_binary(SPMmat,contrast,modality,sigOptions,va
 %
 
 % Process optional input argument
-if exist('varargin','var')
+if ~isempty(varargin)
     assert(numel(varargin) == 1, 'Too many input arguments');
     isInitCfg = varargin{1};
 else
