@@ -21,7 +21,10 @@ function results_create_figures(options,layers,settings,SPMmat,varargin)
 % - settings  : struct with settings for slice_display toolbox
 % - SPMmat    : char; path to SPM.mat
 % Optional:
-% - drugcodes : dataset with drug unblinding codes
+% - drugcodes : data table with drug unblinding codes
+% - drugs     : cellstr; which drug or drug comparison contrasts to
+%               process. Used in case of concatenated firstLevel GLMs,
+%               which have drug or comparisons names in the contrast names.
 % 
 % OUTPUT
 % Saved png images of results figures in </path/to/dir/of/SPM>/figures.
@@ -32,12 +35,25 @@ function results_create_figures(options,layers,settings,SPMmat,varargin)
 % July 2019
 % 
 
-% Get drugcodes from input, if provided
-if ~isempty(varargin)
-    drugcodes = varargin{1};
+% Process input arguments
+if ~isempty(varargin) 
+    if numel(varargin) == 2
+        drugcodes = varargin{1};
+        drugs     = varargin{2};
+    elseif numel(varargin) == 1
+        if istable(varargin{1})
+            drugcodes = varargin{1};
+        elseif iscell(varargin{1})
+            drugs = varargin{1};
+        else
+            error('Incorrect variable type for optional input argument')
+        end
+    else
+        error('Too many input arguments')
+    end
 end
 
-% Directories
+% Directories and info
 % -------------------------------------------------------------------------
 [dirs.spm,~,~] = fileparts(SPMmat);
 dirs.figures   = fullfile(dirs.spm,'figures');
@@ -85,8 +101,7 @@ for iCon = 1:numel(SPM.xCon)
     % figures. Negative contrasts have a prefix like "negative_"
     % 
     % Thus, skip contrasts that are not selected, and skip any contrast 
-    % that does not start with a contrast name that was selected for 
-    % processing (i.e. skip prefixes, but process covariates).
+    % with a name that starts with a non-drug prefix.
     clear mainConName
     for i = 1:numel(cons)
         if contains(contrast,cons{i})
@@ -99,7 +114,11 @@ for iCon = 1:numel(SPM.xCon)
         warning('Contrast %s in SPM not found in options. Skipping this contrast. \nSPM file: %s',contrastName,SPMmat);
         continue
     end
-    if ~options.todo.contrast.(mainConName).do || ~startsWith(contrast,mainConName)
+    if ~options.todo.contrast.(mainConName).do
+        continue
+    elseif exist('drugs','var') && (~any(ismember(strsplit(contrast,'_'),drugs)) || ~startsWith(contrast,drugs))
+        continue
+    elseif ~exist('drugs','var') && ~startsWith(contrast,mainConName)
         continue
     end
         
@@ -135,7 +154,7 @@ for iCon = 1:numel(SPM.xCon)
         
         % If that binary image file does not exist, create it
         if ~exist(layers(3).color.file,'file')
-            create_significant_voxels_binary(SPMmat,cellstr(contrast),modality,options.todo.significance);
+            create_significant_voxels_binary(SPMmat,cellstr(contrast),modality,options.todo.significance,false);
         end
     end
 
@@ -156,17 +175,18 @@ for iCon = 1:numel(SPM.xCon)
 
                 % Get subject number
                 subject = regexp(dirs.spm,'sub-\d\d\d','match');
-                subNr   = str2double(regexp(subject{1},'\d\d\d','match'));
+                subject = subject{1};
+                subNr   = str2double(regexp(subject,'\d\d\d','match'));
                 
                 % If firstLevel sessions are concatenated in one GLM, then
                 % drug is part of the contrast name. Otherwise get drug
                 % name from drug deblinding code.
-                if isfield(options.firsLevelType) && strcmpi(options.firstLevelType,'concatenate')
+                if isfield(options,'firstLevelType') && ismember(options.firstLevelType,{'concatenate','concatenate_dcm'})
                     drug = strsplit(contrast,'_');
                     drug = drug{1};
                     
                     % Figure title. Escape '_' to prevent subscripts
-                    settings.fig_specs.title = [subject{1} ' ' sprintf('(%s)',drug) ' : ' strrep(contrastName,'_','\_')];
+                    settings.fig_specs.title = [subject ' ' sprintf('(%s)',drug) ' : ' strrep(contrastName,'_','\_')];
                 else
                     session = regexp(dirs.spm,'ses-drug\d','match');
                     sesNr   = str2double(regexp(session{1},'\d','match'));
@@ -175,7 +195,7 @@ for iCon = 1:numel(SPM.xCon)
                     drug = drugcodes.(sprintf('session%d',sesNr))(drugcodes.subject==subNr);
 
                     % Figure title. Escape '_' to prevent subscripts
-                    settings.fig_specs.title = [subject{1} ' ' session{1} ' ' sprintf('(%s)',drug{1}) ' : ' strrep(contrastName,'_','\_')];
+                    settings.fig_specs.title = [subject ' ' session{1} ' ' sprintf('(%s)',drug{1}) ' : ' strrep(contrastName,'_','\_')];
                 end
                 
             % Group level. Escape '_' to prevent subscripts
