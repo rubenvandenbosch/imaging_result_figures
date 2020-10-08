@@ -319,7 +319,7 @@ if options.todo.createFigures
                     % .....................................................
                     if options.todo.average
                         % Path to group level contrast SPM
-                        SPMmat = fullfile(options.io.groupLevelDir,denoise,sprintf('sessionAverage_%s',contrast),'SPM.mat');
+                        SPMmat = fullfile(options.io.groupLevelDir,denoise,sprintf('average_%s',contrast),'SPM.mat');
 
                         % Skip if SPM.mat does not exist
                         if ~exist(SPMmat,'file')
@@ -328,7 +328,7 @@ if options.todo.createFigures
                         end
                         
                         % Create figures
-                        results_create_figures(options,layers,settings,SPMmat)
+                        results_create_figures(options,layers,settings,SPMmat,{'average'})
                     end
                 end
             else
